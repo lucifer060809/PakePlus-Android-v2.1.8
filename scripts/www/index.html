@@ -1,11 +1,1162 @@
+
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus</title>
-    </head>
-    <body>
-        PakePlus
-    </body>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>五子棋 · 宗师AI · 联机版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            touch-action: pan-y;
+        }
+        body {
+            background: radial-gradient(circle at 30% 30%, #1e3a4a, #0b1a24);
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            overflow: hidden;
+        }
+        .main {
+            width: 100%;
+            max-width: 460px;
+            margin: 0 auto;
+            padding: 4px 6px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+        }
+        .board-wrap {
+            touch-action: none;
+            -webkit-touch-callout: none;
+            user-select: none;
+            display: flex;
+            justify-content: center;
+            filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.5));
+            margin: 2px 0;
+        }
+        canvas {
+            display: block;
+            width: min(92vw, 92vh);
+            height: auto;
+            aspect-ratio: 1/1;
+            border-radius: 1.2rem;
+            box-shadow: 0 10px 20px -8px black;
+            touch-action: none;
+        }
+        .status {
+            background: rgba(15, 25, 35, 0.8);
+            backdrop-filter: blur(12px);
+            border-radius: 1.5rem;
+            padding: 0.2rem 0.8rem;
+            color: white;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            border: 1px solid rgba(255, 215, 120, 0.4);
+            box-shadow: 0 2px 8px -2px black;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            height: auto;
+            min-height: 28px;
+        }
+        .home {
+            background: rgba(20, 30, 40, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 200, 100, 0.25);
+            border-radius: 1.8rem;
+            box-shadow: 0 15px 30px -10px black;
+            padding: 1rem 0.8rem;
+        }
+        button {
+            transition: all 0.12s ease;
+            font-weight: 600;
+            line-height: 1.4;
+            height: auto;
+        }
+        button:active {
+            transform: scale(0.96);
+            filter: brightness(1.15);
+        }
+        .btn-home {
+            font-size: 1.2rem !important;
+            padding: 0.6rem 0 !important;
+            line-height: 1.4 !important;
+        }
+        .btn-sm {
+            padding: 0.2rem 0.7rem !important;
+            font-size: 0.75rem !important;
+            line-height: 1.4 !important;
+            height: auto !important;
+            min-height: 28px;
+        }
+        .btn-restart {
+            background: rgba(50, 70, 90, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .btn-exit {
+            background: rgba(180, 60, 50, 0.5);
+            backdrop-filter: blur(8px);
+        }
+        .btn-mic {
+            background: rgba(70, 130, 100, 0.6);
+            backdrop-filter: blur(8px);
+        }
+        .btn-mic.active {
+            background: rgba(50, 180, 120, 0.9);
+            box-shadow: 0 0 8px #2ecc71;
+        }
+        .ai-thinking i {
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .msg {
+            background: rgba(0,0,0,0.3);
+            backdrop-filter: blur(8px);
+            border-radius: 1.5rem;
+            padding: 0.2rem 0.8rem;
+            color: #ffecb3;
+            font-size: 0.7rem;
+            font-weight: 500;
+            border: 1px solid rgba(255,220,130,0.3);
+            text-align: center;
+            width: fit-content;
+            margin: 0 auto;
+            line-height: 1.4;
+        }
+        .modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-box {
+            background: rgba(30, 40, 55, 0.96);
+            backdrop-filter: blur(20px);
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            border-radius: 1.8rem;
+            padding: 1rem 1.5rem;
+            text-align: center;
+            max-width: 80%;
+        }
+        .modal-box h2 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: gold;
+            margin-bottom: 0.8rem;
+        }
+        .modal-btn {
+            background: linear-gradient(145deg, #fbbf24, #d97706);
+            border: none;
+            color: black;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 0.4rem 1.5rem;
+            border-radius: 2rem;
+            margin: 0 0.5rem;
+        }
+        .top-bar {
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            z-index: 5;
+            min-height: 36px;
+        }
+        .timer-area {
+            position: absolute;
+            top: -38px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(12px);
+            border-radius: 2rem;
+            padding: 0.25rem 1rem;
+            color: #ffaa66;
+            font-weight: bold;
+            font-size: 1.1rem;
+            font-family: monospace;
+            letter-spacing: 2px;
+            border: 1px solid #ffaa66;
+            z-index: 20;
+            box-shadow: 0 0 10px rgba(255,170,102,0.3);
+            white-space: nowrap;
+            line-height: 1.4;
+        }
+        .game-container {
+            position: relative;
+            padding-top: 38px;
+        }
+        .flex.gap-1 {
+            gap: 0.5rem;
+            display: flex;
+            align-items: center;
+            flex-wrap: nowrap;
+        }
+        .home .flex {
+            margin-bottom: 0.2rem;
+        }
+        .home .space-y-2 {
+            margin-top: 0.5rem;
+        }
+        .room-modal {
+            max-width: 300px;
+        }
+        .room-modal input {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #ffaa66;
+            padding: 8px;
+            border-radius: 1rem;
+            color: white;
+            text-align: center;
+            font-size: 1.2rem;
+            width: 120px;
+            margin: 10px auto;
+        }
+        .room-btn {
+            margin: 5px;
+            padding: 6px 16px;
+        }
+        .win-line {
+            stroke: #ff3366;
+            stroke-width: 4;
+            stroke-dasharray: 5, 5;
+            filter: drop-shadow(0 0 6px #ff3366);
+        }
+        .room-players {
+            color: #ffaa66;
+            font-size: 0.9rem;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="main">
+    <!-- 主界面 -->
+    <div id="home" class="home text-center space-y-3">
+        <div class="flex justify-center items-center gap-2 text-amber-300">
+            <i class="fas fa-chess-board text-2xl"></i>
+            <h1 class="text-2xl font-light tracking-wide">宗师·五子</h1>
+            <i class="fas fa-brain text-2xl"></i>
+        </div>
+        <p class="text-gray-300 text-[0.7rem] flex items-center justify-center gap-1">
+            <i class="fas fa-crown text-yellow-400 text-[0.65rem]"></i> 深度AI · 联机对战
+        </p>
+        <div class="space-y-2 mt-2">
+            <button id="newBtn" class="btn-home w-full bg-gradient-to-r from-amber-700 to-amber-600 text-white rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all border border-amber-400/30">
+                <i class="fas fa-play-circle"></i> 开始对局
+            </button>
+            <button id="continueBtn" class="btn-home w-full bg-slate-600 hover:bg-slate-600 text-white rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all border border-white/10">
+                <i class="fas fa-undo-alt"></i> 继续棋局
+            </button>
+            <button id="roomModeBtn" class="btn-home w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all">
+                <i class="fas fa-door-open"></i> 房间模式
+            </button>
+        </div>
+        <div class="text-[0.65rem] text-gray-400 pt-2 border-t border-white/10 flex justify-center gap-5">
+            <span><i class="fas fa-circle text-black mr-1"></i> 玩家(黑)</span>
+            <span><i class="fas fa-circle text-white mr-1"></i> AI(白)</span>
+        </div>
+        <p class="text-gray-400 text-[0.6rem] flex items-center justify-center gap-1"><i class="fas fa-mobile-alt"></i> 触摸落子 · 自动存档</p>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div id="game" class="hidden game-container">
+        <div class="timer-area" id="timerDisplay">15.0s</div>
+        <div class="flex items-center justify-between top-bar">
+            <div id="turn" class="status">
+                <i class="fas fa-user"></i>
+                <span>玩家回合</span>
+            </div>
+            <div class="flex gap-1">
+                <button id="undoBtn" class="btn-sm btn-restart rounded-full text-white font-medium flex items-center gap-1 transition">
+                    <i class="fas fa-undo-alt"></i> 悔棋
+                </button>
+                <button id="micBtn" class="btn-sm btn-mic rounded-full text-white font-medium flex items-center gap-1 transition">
+                    <i class="fas fa-microphone"></i> 语音
+                </button>
+                <button id="restartBtn" class="btn-sm btn-restart rounded-full text-white font-medium flex items-center gap-1 transition">
+                    <i class="fas fa-undo-alt"></i> 重开
+                </button>
+                <button id="exitBtn" class="btn-sm btn-exit rounded-full text-white font-medium border border-white/20 flex items-center gap-1 transition">
+                    <i class="fas fa-sign-out-alt"></i> 退出
+                </button>
+            </div>
+        </div>
+        <div class="board-wrap">
+            <canvas id="boardCanvas" width="800" height="800"></canvas>
+        </div>
+        <div id="msg" class="msg">
+            ⚔️ 轮到你下棋了
+        </div>
+    </div>
+
+    <!-- 胜利弹窗 -->
+    <div id="modal" class="modal">
+        <div class="modal-box">
+            <h2 id="modalTitle">🏆 玩家胜 🏆</h2>
+            <button id="modalConfirm" class="modal-btn w-full"><i class="fas fa-check-circle mr-2"></i>确定</button>
+        </div>
+    </div>
+
+    <!-- 悔棋申请弹窗 -->
+    <div id="undoModal" class="modal">
+        <div class="modal-box">
+            <h2>⚠️ 悔棋申请</h2>
+            <p style="color:#fff; margin:10px 0;">对方请求悔棋，是否同意？</p>
+            <div>
+                <button id="undoAccept" class="modal-btn" style="background:#2ecc71;">同意</button>
+                <button id="undoReject" class="modal-btn" style="background:#e74c3c;">拒绝</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 房间模式弹窗 -->
+    <div id="roomModal" class="modal">
+        <div class="modal-box room-modal">
+            <div style="display: flex; justify-content: flex-end;">
+                <button id="closeRoomModal" style="background:none; color:#ffaa66; font-size:1.5rem;">✕</button>
+            </div>
+            <h2>🏠 房间模式</h2>
+            <div>
+                <button id="matchRoomBtn" class="modal-btn room-btn">匹配房间</button>
+                <button id="createRoomBtn" class="modal-btn room-btn">创建房间</button>
+            </div>
+            <div id="roomInputArea" style="margin-top:15px; display:none;">
+                <input type="text" id="roomCodeInput" maxlength="4" placeholder="四位房间号" pattern="[0-9]{4}">
+                <div>
+                    <button id="roomConfirmBtn" class="modal-btn room-btn">确认</button>
+                </div>
+            </div>
+            <div id="roomMsg" style="color:#ffaa66; font-size:0.7rem; margin-top:8px;"></div>
+        </div>
+    </div>
+
+    <!-- 房间内页面 -->
+    <div id="roomPage" class="hidden home text-center space-y-3">
+        <div class="flex justify-between items-center">
+            <button id="roomExitBtn" class="btn-sm btn-exit rounded-full">退出房间</button>
+            <h2 class="text-amber-300 text-base">房间: <span id="currentRoomCode">----</span></h2>
+            <button id="roomStartGameBtn" class="btn-sm btn-restart rounded-full" disabled style="opacity:0.5;">等待玩家</button>
+        </div>
+        <div id="roomPlayersDisplay" class="room-players">等待其他玩家加入...</div>
+        <p class="text-gray-300 text-sm">需要两名玩家才能开始对局</p>
+        <div class="text-gray-400 text-sm">房间内可语音交流</div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // ---------- 五子棋核心 ----------
+    const BOARD_SIZE = 15;
+    const EMPTY = 0;
+    const PLAYER = 1;
+    const AI_PIECE = 2;
+    const ROOM_PLAYER_BLACK = 1;
+    const ROOM_PLAYER_WHITE = 2;
+
+    const SCORE = {
+        FIVE: 10000000, LIVE_FOUR: 300000, SLEEP_FOUR: 30000,
+        LIVE_THREE: 15000, SLEEP_THREE: 2000, LIVE_TWO: 500,
+        SLEEP_TWO: 80, LIVE_ONE: 10, SLEEP_ONE: 2
+    };
+    const OFFENSE_WEIGHT = 0.6;
+    const DEFENSE_WEIGHT = 0.4;
+
+    let board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(EMPTY));
+    let currentPlayer = PLAYER;
+    let gameOver = false;
+    let winner = null;
+    let aiTimer = null;
+    let isAIThinking = false;
+    let isRoomMode = false; // 是否为房间模式（双人对战）
+    let roomPlayerColor = null; // 房间模式下当前玩家的颜色
+    
+    // 胜利连线相关
+    let winLinePoints = null;
+    
+    // 计时器相关
+    let timerInterval = null;
+    let timeLeft = 15.0;
+    let isTimerRunning = false;
+    
+    // 悔棋相关
+    let moveHistory = [];
+    
+    // 语音相关
+    let mediaStream = null;
+    let isMicActive = false;
+    
+    // 房间模式
+    let rooms = new Map();
+    let currentRoom = null;
+    let isRoomHost = false;
+    let roomPlayers = []; // 房间内玩家列表
+    
+    // DOM
+    const homeDiv = document.getElementById('home');
+    const gameDiv = document.getElementById('game');
+    const canvas = document.getElementById('boardCanvas');
+    const ctx = canvas.getContext('2d');
+    const turnDiv = document.getElementById('turn');
+    const msgDiv = document.getElementById('msg');
+    const modalDiv = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalConfirmBtn = document.getElementById('modalConfirm');
+    const undoModal = document.getElementById('undoModal');
+    const undoAccept = document.getElementById('undoAccept');
+    const undoReject = document.getElementById('undoReject');
+    const newBtn = document.getElementById('newBtn');
+    const continueBtn = document.getElementById('continueBtn');
+    const exitBtn = document.getElementById('exitBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const undoBtn = document.getElementById('undoBtn');
+    const micBtn = document.getElementById('micBtn');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const roomModeBtn = document.getElementById('roomModeBtn');
+    const roomModal = document.getElementById('roomModal');
+    const closeRoomModal = document.getElementById('closeRoomModal');
+    const matchRoomBtn = document.getElementById('matchRoomBtn');
+    const createRoomBtn = document.getElementById('createRoomBtn');
+    const roomInputArea = document.getElementById('roomInputArea');
+    const roomCodeInput = document.getElementById('roomCodeInput');
+    const roomConfirmBtn = document.getElementById('roomConfirmBtn');
+    const roomMsg = document.getElementById('roomMsg');
+    const roomPage = document.getElementById('roomPage');
+    const roomExitBtn = document.getElementById('roomExitBtn');
+    const roomStartGameBtn = document.getElementById('roomStartGameBtn');
+    const currentRoomCodeSpan = document.getElementById('currentRoomCode');
+    const roomPlayersDisplay = document.getElementById('roomPlayersDisplay');
+
+    const STORAGE_KEY = 'gomoku_compact_ai';
+    
+    // 查找胜利五子连线
+    function findWinLine(player) {
+        for (let row = 0; row < BOARD_SIZE; row++) {
+            for (let col = 0; col < BOARD_SIZE; col++) {
+                if (board[row][col] !== player) continue;
+                const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+                for (let [dx, dy] of dirs) {
+                    let count = 1;
+                    let points = [{row, col}];
+                    for (let step = 1; step < 5; step++) {
+                        const nr = row + dx*step, nc = col + dy*step;
+                        if (nr<0||nr>=BOARD_SIZE||nc<0||nc>=BOARD_SIZE) break;
+                        if (board[nr][nc] === player) {
+                            count++;
+                            points.push({row: nr, col: nc});
+                        } else break;
+                    }
+                    for (let step = 1; step < 5; step++) {
+                        const nr = row - dx*step, nc = col - dy*step;
+                        if (nr<0||nr>=BOARD_SIZE||nc<0||nc>=BOARD_SIZE) break;
+                        if (board[nr][nc] === player) {
+                            count++;
+                            points.push({row: nr, col: nc});
+                        } else break;
+                    }
+                    if (count >= 5) {
+                        const sorted = points.sort((a,b) => (a.row + a.col) - (b.row + b.col));
+                        return { start: sorted[0], end: sorted[sorted.length-1], direction: [dx, dy] };
+                    }
+                }
+            }
+        }
+        return null;
+    }
+    
+    // 绘制胜利连线
+    function drawWinLine() {
+        if (!winLinePoints) return;
+        const cellSize = canvas.width / BOARD_SIZE;
+        const startX = winLinePoints.start.col * cellSize + cellSize/2;
+        const startY = winLinePoints.start.row * cellSize + cellSize/2;
+        const endX = winLinePoints.end.col * cellSize + cellSize/2;
+        const endY = winLinePoints.end.row * cellSize + cellSize/2;
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(endX, endY);
+        ctx.strokeStyle = '#ff3366';
+        ctx.lineWidth = 5;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = '#ff3366';
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
+    
+    // 停止计时器
+    function stopTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        isTimerRunning = false;
+    }
+    
+    // 开始计时器
+    function startTimer() {
+        if (gameOver) return;
+        stopTimer();
+        if (currentPlayer !== PLAYER) return;
+        timeLeft = 15.0;
+        updateTimerDisplay();
+        isTimerRunning = true;
+        timerInterval = setInterval(() => {
+            if (!isTimerRunning || gameOver || currentPlayer !== PLAYER) return;
+            timeLeft -= 0.1;
+            if (timeLeft <= 0) {
+                timeLeft = 0;
+                updateTimerDisplay();
+                stopTimer();
+                if (!gameOver && currentPlayer === PLAYER) {
+                    msgDiv.innerText = '⏰ 超时！轮到对方了';
+                    if (isRoomMode) {
+                        currentPlayer = ROOM_PLAYER_WHITE;
+                    } else {
+                        currentPlayer = AI_PIECE;
+                    }
+                    updateTurnDisplay();
+                    saveGame();
+                    if (!isRoomMode && currentPlayer === AI_PIECE) scheduleAIMove();
+                }
+            } else {
+                updateTimerDisplay();
+            }
+        }, 100);
+    }
+    
+    function updateTimerDisplay() {
+        timerDisplay.textContent = timeLeft.toFixed(1) + 's';
+    }
+    
+    function resetTimer() {
+        if (gameOver) return;
+        stopTimer();
+        if (currentPlayer === PLAYER && !gameOver) {
+            startTimer();
+        }
+    }
+    
+    // 悔棋功能
+    function requestUndo() {
+        if (gameOver) return;
+        if (moveHistory.length === 0) {
+            msgDiv.innerText = '没有可悔棋的棋子';
+            return;
+        }
+        const lastMove = moveHistory[moveHistory.length - 1];
+        if (lastMove.player === currentPlayer) {
+            board[lastMove.row][lastMove.col] = EMPTY;
+            moveHistory.pop();
+            drawBoard();
+            updateTurnDisplay();
+            saveGame();
+            stopTimer();
+            if (currentPlayer === PLAYER) startTimer();
+            msgDiv.innerText = '悔棋成功，继续对局';
+        } else {
+            msgDiv.innerText = '只能悔自己的棋';
+        }
+    }
+    
+    // 语音功能 - 修复麦克风
+    async function toggleMicrophone() {
+        if (isMicActive) {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            isMicActive = false;
+            micBtn.classList.remove('active');
+            micBtn.style.background = 'rgba(70, 130, 100, 0.6)';
+            msgDiv.innerText = '语音已关闭';
+        } else {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaStream = stream;
+                isMicActive = true;
+                micBtn.classList.add('active');
+                micBtn.style.background = 'rgba(50, 180, 120, 0.9)';
+                msgDiv.innerText = '语音已开启，可以交流';
+                // 创建音频上下文但不输出，避免回声
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(stream);
+                source.connect(audioContext.destination);
+                audioContext.suspend();
+            } catch (err) {
+                console.error('麦克风错误:', err);
+                msgDiv.innerText = '无法开启麦克风，请检查权限';
+                if (err.name === 'NotAllowedError') {
+                    msgDiv.innerText = '请允许麦克风权限后重试';
+                }
+            }
+        }
+    }
+    
+    // 房间模式 - 更新玩家显示
+    function updateRoomDisplay() {
+        if (!currentRoom || !rooms.has(currentRoom)) return;
+        const room = rooms.get(currentRoom);
+        const playerCount = room.players ? room.players.length : 0;
+        if (playerCount >= 2) {
+            roomPlayersDisplay.innerHTML = '✓ 已有两名玩家，可以开始对局';
+            roomStartGameBtn.disabled = false;
+            roomStartGameBtn.style.opacity = '1';
+        } else {
+            roomPlayersDisplay.innerHTML = '等待其他玩家加入... (当前1人，需要2人)';
+            roomStartGameBtn.disabled = true;
+            roomStartGameBtn.style.opacity = '0.5';
+        }
+    }
+    
+    function openRoomModal() {
+        roomModal.classList.add('active');
+        roomInputArea.style.display = 'none';
+        roomMsg.innerText = '';
+        roomCodeInput.value = '';
+    }
+    
+    function createRoom() {
+        roomInputArea.style.display = 'block';
+        roomMsg.innerText = '输入4位数字房间号';
+        roomConfirmBtn.onclick = () => {
+            const code = roomCodeInput.value.trim();
+            if (!/^\d{4}$/.test(code)) {
+                roomMsg.innerText = '请输入4位数字';
+                return;
+            }
+            if (rooms.has(code)) {
+                roomMsg.innerText = '已有房间';
+                return;
+            }
+            rooms.set(code, { players: ['host'], gameStarted: false });
+            currentRoom = code;
+            isRoomHost = true;
+            roomModal.classList.remove('active');
+            enterRoomPage();
+        };
+    }
+    
+    function matchRoom() {
+        roomInputArea.style.display = 'block';
+        roomMsg.innerText = '输入4位房间号';
+        roomConfirmBtn.onclick = () => {
+            const code = roomCodeInput.value.trim();
+            if (!/^\d{4}$/.test(code)) {
+                roomMsg.innerText = '请输入4位数字';
+                return;
+            }
+            if (!rooms.has(code)) {
+                roomMsg.innerText = '房间不存在';
+                return;
+            }
+            const room = rooms.get(code);
+            if (room.players.length >= 2) {
+                roomMsg.innerText = '房间已满';
+                return;
+            }
+            currentRoom = code;
+            isRoomHost = false;
+            room.players.push('guest');
+            roomModal.classList.remove('active');
+            enterRoomPage();
+        };
+    }
+    
+    function enterRoomPage() {
+        homeDiv.classList.add('hidden');
+        roomPage.classList.remove('hidden');
+        currentRoomCodeSpan.textContent = currentRoom;
+        updateRoomDisplay();
+        if (!isMicActive) toggleMicrophone();
+    }
+    
+    function exitRoom() {
+        if (currentRoom && rooms.has(currentRoom)) {
+            rooms.delete(currentRoom);
+        }
+        currentRoom = null;
+        isRoomHost = false;
+        roomPage.classList.add('hidden');
+        homeDiv.classList.remove('hidden');
+        if (isMicActive) toggleMicrophone();
+    }
+    
+    // 房间模式开始对局 - 双人对战，不是AI
+    function startRoomGame() {
+        if (!currentRoom || !rooms.has(currentRoom)) return;
+        const room = rooms.get(currentRoom);
+        if (room.players.length < 2) {
+            msgDiv.innerText = '需要两名玩家才能开始对局';
+            return;
+        }
+        // 退出房间页面，进入游戏界面（双人对战模式）
+        roomPage.classList.add('hidden');
+        gameDiv.classList.remove('hidden');
+        homeDiv.classList.add('hidden');
+        
+        // 设置为房间模式（双人对战）
+        isRoomMode = true;
+        roomPlayerColor = isRoomHost ? ROOM_PLAYER_BLACK : ROOM_PLAYER_WHITE;
+        
+        // 重置棋盘
+        resetBoard();
+        // 设置初始玩家（房主黑棋先手）
+        currentPlayer = ROOM_PLAYER_BLACK;
+        drawBoard();
+        updateTurnDisplay();
+        startTimer();
+        
+        // 更新显示文字
+        if (roomPlayerColor === ROOM_PLAYER_BLACK) {
+            turnDiv.innerHTML = '<i class="fas fa-user"></i><span>你的回合 (黑棋)</span>';
+            msgDiv.innerText = '⚔️ 轮到你了 (黑棋)';
+        } else {
+            turnDiv.innerHTML = '<i class="fas fa-user-friends"></i><span>对方回合 (白棋)</span>';
+            msgDiv.innerText = '等待对方落子...';
+        }
+    }
+    
+    // 房间模式下的落子处理
+    function handleRoomPlayerMove(row, col) {
+        if (gameOver) return false;
+        if (currentPlayer !== roomPlayerColor) {
+            msgDiv.innerText = '请等待对方落子';
+            return false;
+        }
+        if (board[row][col] !== EMPTY) return false;
+        
+        board[row][col] = roomPlayerColor;
+        moveHistory.push({ row, col, player: roomPlayerColor });
+        drawBoard();
+        
+        if (checkWinnerAt(row, col, roomPlayerColor)) {
+            gameOver = true; winner = roomPlayerColor;
+            winLinePoints = findWinLine(roomPlayerColor);
+            drawBoard();
+            drawWinLine();
+            updateTurnDisplay();
+            saveGame();
+            stopTimer();
+            setTimeout(() => {
+                modalDiv.classList.add('active');
+            }, 2300);
+            return true;
+        }
+        if (isBoardFull()) {
+            gameOver = true; winner = 'draw';
+            updateTurnDisplay(); saveGame(); stopTimer();
+            setTimeout(() => {
+                modalDiv.classList.add('active');
+            }, 2300);
+            return true;
+        }
+        
+        // 切换玩家
+        currentPlayer = currentPlayer === ROOM_PLAYER_BLACK ? ROOM_PLAYER_WHITE : ROOM_PLAYER_BLACK;
+        updateTurnDisplay();
+        saveGame();
+        stopTimer();
+        if (currentPlayer === roomPlayerColor) startTimer();
+        else msgDiv.innerText = '等待对方落子...';
+        return true;
+    }
+    
+    // AI函数
+    function evaluatePosition(row, col, player) {
+        let total = 0;
+        const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+        for (let [dx, dy] of dirs) {
+            let count = 1;
+            let leftOpen = 0, rightOpen = 0;
+            for (let step = 1; step <= 5; step++) {
+                const nr = row + dx*step, nc = col + dy*step;
+                if (nr<0 || nr>=BOARD_SIZE || nc<0 || nc>=BOARD_SIZE) break;
+                if (board[nr][nc] === player) count++;
+                else if (board[nr][nc] === EMPTY) { rightOpen++; break; }
+                else break;
+            }
+            for (let step = 1; step <= 5; step++) {
+                const nr = row - dx*step, nc = col - dy*step;
+                if (nr<0 || nr>=BOARD_SIZE || nc<0 || nc>=BOARD_SIZE) break;
+                if (board[nr][nc] === player) count++;
+                else if (board[nr][nc] === EMPTY) { leftOpen++; break; }
+                else break;
+            }
+            const isLive = (leftOpen>0 && rightOpen>0) || (leftOpen>0 && rightOpen===0 && count<5) || (rightOpen>0 && leftOpen===0 && count<5);
+            if (count >= 5) total += SCORE.FIVE;
+            else if (count === 4) total += isLive ? SCORE.LIVE_FOUR : SCORE.SLEEP_FOUR;
+            else if (count === 3) total += isLive ? SCORE.LIVE_THREE : SCORE.SLEEP_THREE;
+            else if (count === 2) total += isLive ? SCORE.LIVE_TWO : SCORE.SLEEP_TWO;
+            else if (count === 1) total += isLive ? SCORE.LIVE_ONE : SCORE.SLEEP_ONE;
+        }
+        return total;
+    }
+    
+    function aiMoveWithSearch() {
+        if (gameOver || currentPlayer !== AI_PIECE || isAIThinking || isRoomMode) return;
+        isAIThinking = true;
+        
+        setTimeout(() => {
+            if (gameOver || currentPlayer !== AI_PIECE) {
+                isAIThinking = false;
+                return;
+            }
+            
+            let emptySpots = [];
+            for (let r=0; r<BOARD_SIZE; r++)
+                for (let c=0; c<BOARD_SIZE; c++)
+                    if (board[r][c] === EMPTY) emptySpots.push([r, c]);
+            if (emptySpots.length === 0) {
+                isAIThinking = false;
+                return;
+            }
+            
+            let candidates = [];
+            for (let [r, c] of emptySpots) {
+                const aiScore = evaluatePosition(r, c, AI_PIECE);
+                const playerScore = evaluatePosition(r, c, PLAYER);
+                let combined = OFFENSE_WEIGHT * aiScore + DEFENSE_WEIGHT * playerScore;
+                const center = BOARD_SIZE/2;
+                const dist = Math.abs(r-center) + Math.abs(c-center);
+                combined += (BOARD_SIZE*2 - dist) * 3;
+                candidates.push({ r, c, score: combined });
+            }
+            candidates.sort((a,b) => b.score - a.score);
+            const topCandidates = candidates.slice(0, Math.min(8, candidates.length));
+            
+            let bestScore = -Infinity, bestMove = topCandidates[0];
+            for (let cand of topCandidates) {
+                board[cand.r][cand.c] = AI_PIECE;
+                let aiMoveScore = evaluatePosition(cand.r, cand.c, AI_PIECE);
+                let bestPlayerResponse = 0;
+                for (let [rr, cc] of emptySpots) {
+                    if (rr === cand.r && cc === cand.c) continue;
+                    const playerRespScore = evaluatePosition(rr, cc, PLAYER);
+                    if (playerRespScore > bestPlayerResponse) bestPlayerResponse = playerRespScore;
+                }
+                let final = aiMoveScore - bestPlayerResponse * 0.8;
+                if (final > bestScore) { bestScore = final; bestMove = cand; }
+                board[cand.r][cand.c] = EMPTY;
+            }
+            
+            const [aiRow, aiCol] = [bestMove.r, bestMove.c];
+            board[aiRow][aiCol] = AI_PIECE;
+            moveHistory.push({ row: aiRow, col: aiCol, player: AI_PIECE });
+            drawBoard();
+            
+            if (checkWinnerAt(aiRow, aiCol, AI_PIECE)) {
+                gameOver = true; winner = AI_PIECE; currentPlayer = null;
+                winLinePoints = findWinLine(AI_PIECE);
+                drawBoard();
+                drawWinLine();
+                updateTurnDisplay();
+                saveGame();
+                stopTimer();
+                setTimeout(() => {
+                    modalDiv.classList.add('active');
+                }, 2300);
+                isAIThinking = false;
+                return;
+            }
+            if (isBoardFull()) {
+                gameOver = true; winner = 'draw'; currentPlayer = null;
+                updateTurnDisplay(); saveGame(); stopTimer();
+                setTimeout(() => {
+                    modalDiv.classList.add('active');
+                }, 2300);
+                isAIThinking = false;
+                return;
+            }
+            currentPlayer = PLAYER;
+            updateTurnDisplay();
+            saveGame();
+            resetTimer();
+            isAIThinking = false;
+        }, 350);
+    }
+    
+    function scheduleAIMove() {
+        if (isRoomMode) return;
+        if (aiTimer) clearTimeout(aiTimer);
+        aiTimer = setTimeout(() => { aiMoveWithSearch(); aiTimer = null; }, 50);
+    }
+    
+    function checkWinnerAt(row, col, player) {
+        const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+        for (let [dx, dy] of dirs) {
+            let count = 1;
+            for (let step = 1; step < 5; step++) {
+                const nr = row + dx*step, nc = col + dy*step;
+                if (nr<0||nr>=BOARD_SIZE||nc<0||nc>=BOARD_SIZE) break;
+                if (board[nr][nc] === player) count++; else break;
+            }
+            for (let step = 1; step < 5; step++) {
+                const nr = row - dx*step, nc = col - dy*step;
+                if (nr<0||nr>=BOARD_SIZE||nc<0||nc>=BOARD_SIZE) break;
+                if (board[nr][nc] === player) count++; else break;
+            }
+            if (count >= 5) return true;
+        }
+        return false;
+    }
+    function isBoardFull() {
+        for (let r=0; r<BOARD_SIZE; r++)
+            for (let c=0; c<BOARD_SIZE; c++)
+                if (board[r][c] === EMPTY) return false;
+        return true;
+    }
+    
+    function saveGame() { 
+        if (!isRoomMode) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ board, currentPlayer, gameOver, winner, moveHistory }));
+        }
+    }
+    function loadGame() { const saved = localStorage.getItem(STORAGE_KEY); return saved ? JSON.parse(saved) : null; }
+    function clearGameStorage() { localStorage.removeItem(STORAGE_KEY); }
+    
+    function resetBoard() {
+        if (aiTimer) clearTimeout(aiTimer);
+        stopTimer();
+        board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(EMPTY));
+        currentPlayer = PLAYER;
+        gameOver = false;
+        winner = null;
+        moveHistory = [];
+        winLinePoints = null;
+        hideModal();
+        drawBoard();
+        updateTurnDisplay();
+        msgDiv.innerText = '⚔️ 轮到你下棋了 (黑棋)';
+        if (!isRoomMode) clearGameStorage();
+        if (!isRoomMode && currentPlayer === PLAYER) startTimer();
+    }
+    
+    function drawBoard() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const w = canvas.width, h = canvas.height;
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, '#d4a76a'); grad.addColorStop(0.5, '#b88b4b'); grad.addColorStop(1, '#9c6e3c');
+        ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
+        const cellSize = w / BOARD_SIZE;
+        ctx.lineWidth = 2; ctx.strokeStyle = '#4f3a1e'; ctx.shadowColor = '#b5915f'; ctx.shadowBlur = 5;
+        for (let i = 0; i < BOARD_SIZE; i++) {
+            const pos = i * cellSize + cellSize/2;
+            ctx.beginPath(); ctx.moveTo(cellSize/2, pos); ctx.lineTo(w - cellSize/2, pos); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(pos, cellSize/2); ctx.lineTo(pos, h - cellSize/2); ctx.stroke();
+        }
+        ctx.shadowBlur = 0;
+        const starPos = [3, 7, 11]; ctx.fillStyle = '#7a5c3a';
+        for (let r of starPos) for (let c of starPos) { ctx.beginPath(); ctx.arc(c * cellSize + cellSize/2, r * cellSize + cellSize/2, cellSize*0.1, 0, 2*Math.PI); ctx.fill(); }
+        for (let row = 0; row < BOARD_SIZE; row++) for (let col = 0; col < BOARD_SIZE; col++) {
+            if (board[row][col] === EMPTY) continue;
+            const x = col * cellSize + cellSize/2, y = row * cellSize + cellSize/2, radius = cellSize * 0.42;
+            ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 10; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 3;
+            const gradient = ctx.createRadialGradient(x-6, y-6, radius*0.2, x, y, radius*1.2);
+            if (board[row][col] === PLAYER || board[row][col] === ROOM_PLAYER_BLACK) {
+                gradient.addColorStop(0, '#3a3a3a'); gradient.addColorStop(0.7, '#1a1a1a'); gradient.addColorStop(1, '#050505');
+            } else {
+                gradient.addColorStop(0, '#fefefe'); gradient.addColorStop(0.5, '#e0e0e0'); gradient.addColorStop(1, '#a0a0a0');
+            }
+            ctx.fillStyle = gradient; ctx.beginPath(); ctx.arc(x, y, radius, 0, 2*Math.PI); ctx.fill();
+            ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+            ctx.beginPath(); ctx.arc(x-5, y-5, radius*0.18, 0, 2*Math.PI); ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fill();
+            ctx.beginPath(); ctx.arc(x+4, y+4, radius*0.1, 0, 2*Math.PI); ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fill();
+        }
+        if (winLinePoints) drawWinLine();
+    }
+    
+    function handlePlayerMove(row, col) {
+        if (isRoomMode) {
+            return handleRoomPlayerMove(row, col);
+        }
+        if (gameOver || currentPlayer !== PLAYER || board[row][col] !== EMPTY) return false;
+        board[row][col] = PLAYER;
+        moveHistory.push({ row, col, player: PLAYER });
+        drawBoard();
+        
+        if (checkWinnerAt(row, col, PLAYER)) {
+            gameOver = true; winner = PLAYER; currentPlayer = null;
+            winLinePoints = findWinLine(PLAYER);
+            drawBoard();
+            drawWinLine();
+            updateTurnDisplay();
+            saveGame();
+            stopTimer();
+            setTimeout(() => {
+                modalDiv.classList.add('active');
+            }, 2300);
+            return true;
+        }
+        if (isBoardFull()) {
+            gameOver = true; winner = 'draw'; currentPlayer = null;
+            updateTurnDisplay(); saveGame(); stopTimer();
+            setTimeout(() => {
+                modalDiv.classList.add('active');
+            }, 2300);
+            return true;
+        }
+        currentPlayer = AI_PIECE;
+        updateTurnDisplay();
+        saveGame();
+        stopTimer();
+        scheduleAIMove();
+        return true;
+    }
+    
+    function updateTurnDisplay() {
+        if (gameOver) {
+            if (winner === PLAYER || winner === ROOM_PLAYER_BLACK) modalTitle.innerHTML = '🏆 玩家胜 🏆';
+            else if (winner === AI_PIECE || winner === ROOM_PLAYER_WHITE) modalTitle.innerHTML = winner === AI_PIECE ? '🤖 AI 胜 🤖' : '🏆 对方胜 🏆';
+            else if (winner === 'draw') modalTitle.innerHTML = '🤝 平局 🤝';
+            turnDiv.innerHTML = winner === PLAYER || winner === ROOM_PLAYER_BLACK ? '<i class="fas fa-trophy"></i><span>胜利</span>' : 
+                               (winner === AI_PIECE ? '<i class="fas fa-robot"></i><span>AI 胜利</span>' : 
+                               winner === ROOM_PLAYER_WHITE ? '<i class="fas fa-user-friends"></i><span>对方胜利</span>' :
+                               '<i class="fas fa-handshake"></i><span>平局</span>');
+            return;
+        }
+        if (isRoomMode) {
+            if (currentPlayer === roomPlayerColor) {
+                turnDiv.innerHTML = '<i class="fas fa-user"></i><span>你的回合</span>';
+                msgDiv.innerText = '⚔️ 轮到你了';
+            } else {
+                turnDiv.innerHTML = '<i class="fas fa-user-friends"></i><span>对方回合</span>';
+                msgDiv.innerText = '等待对方落子...';
+            }
+            return;
+        }
+        if (currentPlayer === PLAYER) {
+            turnDiv.innerHTML = '<i class="fas fa-user"></i><span>玩家回合</span>';
+            msgDiv.innerText = '⚔️ 轮到你了 (黑棋)';
+            resetTimer();
+        } else {
+            turnDiv.innerHTML = '<i class="fas fa-microchip ai-thinking"></i><span>AI 思考中...</span>';
+            msgDiv.innerText = '🤖 AI 正在深度计算...';
+            stopTimer();
+        }
+    }
+    function hideModal() { modalDiv.classList.remove('active'); undoModal.classList.remove('active'); }
+    function resumeGame() { 
+        if (isRoomMode) return;
+        const saved = loadGame(); 
+        if (saved && !saved.gameOver) { 
+            board = saved.board; currentPlayer = saved.currentPlayer; gameOver = false; winner = null; 
+            moveHistory = saved.moveHistory || []; drawBoard(); updateTurnDisplay(); 
+            if (currentPlayer === AI_PIECE) scheduleAIMove(); else startTimer(); 
+        } else resetBoard(); 
+    }
+    function restartGame() { 
+        if (isRoomMode) {
+            resetBoard();
+            currentPlayer = ROOM_PLAYER_BLACK;
+            drawBoard();
+            updateTurnDisplay();
+            if (roomPlayerColor === ROOM_PLAYER_BLACK) startTimer();
+            else msgDiv.innerText = '等待对方落子...';
+        } else {
+            resetBoard(); 
+            drawBoard(); 
+            updateTurnDisplay();
+        }
+    }
+    function exitToHome() { 
+        if (aiTimer) clearTimeout(aiTimer); 
+        stopTimer(); 
+        hideModal(); 
+        gameDiv.classList.add('hidden'); 
+        homeDiv.classList.remove('hidden');
+        isRoomMode = false;
+    }
+    
+    // 事件绑定
+    undoBtn.onclick = requestUndo;
+    micBtn.onclick = toggleMicrophone;
+    undoAccept.onclick = () => { undoModal.classList.remove('active'); requestUndo(); };
+    undoReject.onclick = () => { undoModal.classList.remove('active'); msgDiv.innerText = '对方拒绝了悔棋'; };
+    
+    roomModeBtn.onclick = openRoomModal;
+    closeRoomModal.onclick = () => roomModal.classList.remove('active');
+    matchRoomBtn.onclick = matchRoom;
+    createRoomBtn.onclick = createRoom;
+    roomExitBtn.onclick = exitRoom;
+    roomStartGameBtn.onclick = startRoomGame;
+    
+    function handleCanvasInteraction(e) {
+        e.preventDefault(); 
+        if (gameOver) return;
+        if (isRoomMode && currentPlayer !== roomPlayerColor) return;
+        if (!isRoomMode && currentPlayer !== PLAYER) return;
+        const rect = canvas.getBoundingClientRect(); 
+        const scaleX = canvas.width / rect.width; 
+        const scaleY = canvas.height / rect.height;
+        let clientX, clientY; 
+        if (e.touches) { clientX = e.touches[0].clientX; clientY = e.touches[0].clientY; } 
+        else { clientX = e.clientX; clientY = e.clientY; }
+        const canvasX = (clientX - rect.left) * scaleX; 
+        const canvasY = (clientY - rect.top) * scaleY;
+        const cellSize = canvas.width / BOARD_SIZE; 
+        const col = Math.floor(canvasX / cellSize); 
+        const row = Math.floor(canvasY / cellSize);
+        if (row>=0 && row<BOARD_SIZE && col>=0 && col<BOARD_SIZE) handlePlayerMove(row, col);
+    }
+    
+    canvas.addEventListener('touchstart', handleCanvasInteraction, { passive: false });
+    canvas.addEventListener('touchend', e => e.preventDefault()); 
+    canvas.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+    canvas.addEventListener('mousedown', handleCanvasInteraction); 
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+    
+    newBtn.addEventListener('click', () => { 
+        isRoomMode = false;
+        resetBoard(); 
+        gameDiv.classList.remove('hidden'); 
+        homeDiv.classList.add('hidden'); 
+        drawBoard(); 
+    });
+    continueBtn.addEventListener('click', () => { 
+        isRoomMode = false;
+        resumeGame(); 
+        gameDiv.classList.remove('hidden'); 
+        homeDiv.classList.add('hidden'); 
+        drawBoard(); 
+    });
+    exitBtn.addEventListener('click', exitToHome); 
+    restartBtn.addEventListener('click', restartGame);
+    modalConfirmBtn.addEventListener('click', exitToHome);
+    
+    drawBoard();
+})();
+</script>
+</body>
 </html>
