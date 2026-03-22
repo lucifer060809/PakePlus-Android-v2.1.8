@@ -1,11 +1,1431 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus</title>
-    </head>
-    <body>
-        PakePlus
-    </body>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>专业相机 | 多摄变焦·混合变焦·微距模式 | AI增强成像</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            background: #000;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            color: white;
+            touch-action: pan-y pinch-zoom;
+        }
+        .camera-app {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: black;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .preview-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            background: #000;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin: 0 auto;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform-origin: center center;
+        }
+        .top-bar {
+            position: absolute;
+            top: 50px;
+            left: 20px;
+            right: 20px;
+            z-index: 30;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        .top-left-controls {
+            display: flex;
+            gap: 8px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+            border-radius: 30px;
+            padding: 4px 12px;
+        }
+        .top-left-controls.hidden { display: none; }
+        .res-fps-select {
+            background: rgba(0,0,0,0.7);
+            border: none;
+            color: white;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        .top-right-buttons {
+            display: flex;
+            gap: 12px;
+        }
+        .cam-switch, .torch-btn, .hybrid-btn {
+            background: rgba(0,0,0,0.6);
+            border-radius: 30px;
+            padding: 8px 14px;
+            font-size: 14px;
+            backdrop-filter: blur(8px);
+            border: none;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.1s ease;
+        }
+        .torch-btn.active, .hybrid-btn.active {
+            background: #ffc107 !important;
+            color: black !important;
+        }
+        .cam-switch.flash {
+            background: #ffc107 !important;
+            color: black !important;
+            transform: scale(0.96);
+        }
+        .controls {
+            position: relative;
+            background: transparent;
+            padding: 0 16px;
+            flex-shrink: 0;
+            margin-top: auto;
+            margin-bottom: 0;
+        }
+        .zoom-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.02cm;
+            position: relative;
+        }
+        .left-action-buttons {
+            position: absolute;
+            left: 0;
+            display: flex;
+            flex-direction: row;
+            gap: 2px;
+            align-items: center;
+        }
+        .param-small, .macro-small {
+            background: rgba(0,0,0,0.65);
+            backdrop-filter: blur(8px);
+            border-radius: 32px;
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.1s ease;
+        }
+        .macro-small.active {
+            background: #ff9f0a;
+            color: black;
+        }
+        .zoom-container {
+            background: rgba(30,30,35,0.5);
+            backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 0.1cm 0;
+            text-align: center;
+            cursor: pointer;
+            min-width: 2.8cm;
+        }
+        .zoom-presets {
+            display: flex;
+            justify-content: space-around;
+            gap: 6px;
+            padding: 0 6px;
+        }
+        .zoom-preset {
+            font-size: 10px;
+            font-weight: 500;
+            color: white;
+            background: rgba(255,255,255,0.2);
+            border-radius: 14px;
+            padding: 2px 5px;
+            cursor: pointer;
+        }
+        .zoom-preset.active-preset {
+            background: #ff9f0a;
+            color: black;
+        }
+        .param-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.65);
+            backdrop-filter: blur(12px);
+            border-radius: 40px;
+            padding: 6px 12px;
+            margin-bottom: 0.2cm;
+            gap: 6px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            transition: transform 0.2s ease, opacity 0.2s ease;
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .param-bar.closed {
+            transform: translateY(20px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .param-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 60px;
+            cursor: pointer;
+        }
+        .param-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: #ff9f0a;
+            background: rgba(0,0,0,0.5);
+            padding: 4px 8px;
+            border-radius: 20px;
+            margin-bottom: 4px;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .param-name {
+            font-size: 10px;
+            opacity: 0.7;
+            text-align: center;
+        }
+        .param-divider {
+            width: 1px;
+            height: 40px;
+            background: rgba(255,255,255,0.3);
+            margin: 0 2px;
+        }
+        .reset-icon {
+            font-size: 20px;
+            cursor: pointer;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.1s;
+        }
+        .reset-icon:active {
+            background: #ff9f0a;
+            color: black;
+        }
+        .mode-bar {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(30,30,35,0.7);
+            border-radius: 30px;
+            padding: 4px 10px;
+            margin-bottom: 18px;
+            backdrop-filter: blur(8px);
+        }
+        .mode-item {
+            font-size: 13px;
+            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 25px;
+            transition: 0.1s;
+            color: #ccc;
+            cursor: pointer;
+        }
+        .mode-item.active {
+            background: #ff9f0a;
+            color: black;
+        }
+        .shutter-area {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 1cm;
+        }
+        .shutter-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid rgba(255,255,255,0.8);
+            box-shadow: 0 2px 8px black;
+            cursor: pointer;
+            transition: transform 0.05s linear, background 0.1s;
+        }
+        .shutter-btn:active { transform: scale(0.92); }
+        .shutter-btn.yellow { background: #ffc107; border-color: #ffc107; }
+        .record-btn {
+            background: #ff3b30;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+        }
+        .record-btn:active { transform: scale(0.92); }
+        .record-btn.recording { background: #aa2e25; }
+        .hidden { display: none; }
+
+        /* 浮层通用样式 */
+        .floating-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(20px);
+            border-radius: 30px 30px 0 0;
+            padding: 20px;
+            z-index: 200;
+            transform: translateY(100%);
+            transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .floating-panel.open {
+            transform: translateY(0);
+        }
+        .zoom-slider-panel {
+            padding: 20px 20px 30px;
+        }
+        .zoom-slider-label {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #ff9f0a;
+        }
+        .zoom-slider {
+            width: 80%;
+            -webkit-appearance: none;
+            background: rgba(255,255,255,0.2);
+            height: 3px;
+            border-radius: 3px;
+            outline: none;
+        }
+        .zoom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #ff9f0a;
+            cursor: pointer;
+        }
+        .zoom-value-display {
+            margin-top: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #ff9f0a;
+        }
+
+        /* 滑块浮层 (用于ISO/S/EV/MF) */
+        .slider-overlay {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 30px 30px 0 0;
+            padding: 20px;
+            z-index: 250;
+            transform: translateY(100%);
+            transition: transform 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .slider-overlay.open {
+            transform: translateY(0);
+        }
+        .slider-label {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #ff9f0a;
+        }
+        .slider-input {
+            width: 80%;
+            -webkit-appearance: none;
+            background: transparent;
+            height: 4px;
+            border-radius: 2px;
+            position: relative;
+        }
+        .slider-input::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #ff9f0a 0%, #ff9f0a var(--percent), rgba(255,255,255,0.2) var(--percent), rgba(255,255,255,0.2) 100%);
+            border-radius: 2px;
+            pointer-events: none;
+        }
+        .slider-input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 0;
+            height: 0;
+            background: transparent;
+        }
+        .slider-value {
+            margin-top: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+        }
+
+        /* 双滑块浮层 */
+        .dual-slider-overlay {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 30px 30px 0 0;
+            padding: 20px;
+            z-index: 250;
+            transform: translateY(100%);
+            transition: transform 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .dual-slider-overlay.open {
+            transform: translateY(0);
+        }
+        .dual-slider-item {
+            width: 80%;
+            margin: 10px 0;
+        }
+        .dual-slider-label {
+            font-size: 14px;
+            margin-bottom: 5px;
+            color: #ff9f0a;
+        }
+        .dual-slider {
+            width: 100%;
+            -webkit-appearance: none;
+            background: transparent;
+            height: 4px;
+            border-radius: 2px;
+            position: relative;
+        }
+        .dual-slider::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #ff9f0a 0%, #ff9f0a var(--percent), rgba(255,255,255,0.2) var(--percent), rgba(255,255,255,0.2) 100%);
+            border-radius: 2px;
+            pointer-events: none;
+        }
+        .dual-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 0;
+            height: 0;
+            background: transparent;
+        }
+        .dual-slider-value {
+            margin-top: 5px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .hybrid-badge {
+            position: absolute;
+            top: 120px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            color: #ffc107;
+            z-index: 31;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+<div class="camera-app">
+    <div class="preview-container">
+        <video id="videoPreview" autoplay playsinline muted></video>
+    </div>
+    <div class="top-bar">
+        <div class="top-left-controls" id="topLeftControls">
+            <select id="resolutionSelect" class="res-fps-select"></select>
+            <select id="fpsSelect" class="res-fps-select"></select>
+        </div>
+        <div class="top-right-buttons">
+            <button class="torch-btn" id="torchBtn">🔦</button>
+            <button class="hybrid-btn" id="hybridBtn">HX</button>
+            <button class="cam-switch" id="switchCamBtn">🔄</button>
+        </div>
+    </div>
+    <div id="hybridBadge" class="hybrid-badge" style="display: none;">🔀 HX Fusion (OV64B+LYT808)</div>
+
+    <div class="controls" id="mainControls">
+        <div class="zoom-section" id="zoomSection">
+            <div class="left-action-buttons">
+                <div class="param-small" id="paramsTrigger">⚙️</div>
+                <div class="macro-small" id="macroTrigger">🌼</div>
+            </div>
+            <div class="zoom-container" id="zoomContainer">
+                <div class="zoom-presets">
+                    <span class="zoom-preset" data-zoom="0.6">0.6</span>
+                    <span class="zoom-preset" data-zoom="1">1</span>
+                    <span class="zoom-preset" data-zoom="3">3</span>
+                    <span class="zoom-preset" data-zoom="6">6</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="paramBar" class="param-bar closed">
+            <div class="reset-icon" id="resetParamsBtn">↺</div>
+            <div class="param-divider"></div>
+            <div class="param-item" id="isoParamItem">
+                <div class="param-value" id="paramIsoValue">自动</div>
+                <div class="param-name">ISO</div>
+            </div>
+            <div class="param-divider"></div>
+            <div class="param-item" id="shutterParamItem">
+                <div class="param-value" id="paramShutterValue">自动</div>
+                <div class="param-name">S</div>
+            </div>
+            <div class="param-divider"></div>
+            <div class="param-item" id="evParamItem">
+                <div class="param-value" id="paramEvValue">0.0</div>
+                <div class="param-name">EV</div>
+            </div>
+            <div class="param-divider"></div>
+            <div class="param-item" id="focusParamItem">
+                <div class="param-value" id="paramFocusValue">AF</div>
+                <div class="param-name">AF</div>
+            </div>
+            <div class="param-divider"></div>
+            <div class="param-item" id="wbParamItem">
+                <div class="param-value" id="paramWbValue">自动</div>
+                <div class="param-name">WB</div>
+            </div>
+        </div>
+
+        <div class="mode-bar" id="modeBar">
+            <div class="mode-item active" data-mode="photo">照片</div>
+            <div class="mode-item" data-mode="video">视频</div>
+            <div class="mode-item" data-mode="slowmo">慢动作</div>
+            <div class="mode-item" data-mode="tilt">移轴</div>
+        </div>
+        <div class="shutter-area" id="shutterArea">
+            <div id="captureBtn" class="shutter-btn"></div>
+            <div id="recordBtn" class="record-btn hidden"></div>
+        </div>
+    </div>
+
+    <!-- 水平变焦浮层 -->
+    <div id="zoomFloatPanel" class="floating-panel zoom-slider-panel">
+        <div class="zoom-slider-label">滑动调节变焦 (0.6x - 140x)</div>
+        <input type="range" id="zoomFloatSlider" class="zoom-slider" min="0.6" max="140" step="0.1" value="1">
+        <div class="zoom-value-display" id="zoomFloatValue">1.0x</div>
+    </div>
+
+    <!-- 通用滑块浮层 -->
+    <div id="sliderOverlay" class="slider-overlay">
+        <div class="slider-label" id="sliderLabel">调节参数</div>
+        <input type="range" id="sliderInput" class="slider-input" min="0" max="100" step="1">
+        <div class="slider-value" id="sliderValue">0</div>
+    </div>
+
+    <!-- 双滑块浮层 -->
+    <div id="dualSliderOverlay" class="dual-slider-overlay">
+        <div class="dual-slider-item">
+            <div class="dual-slider-label">色温 (K)</div>
+            <input type="range" id="tempSlider" class="dual-slider" min="2000" max="8000" step="50" value="5500">
+            <div class="dual-slider-value" id="tempValue">5500K</div>
+        </div>
+        <div class="dual-slider-item">
+            <div class="dual-slider-label">色调</div>
+            <input type="range" id="tintSlider" class="dual-slider" min="-150" max="150" step="1" value="0">
+            <div class="dual-slider-value" id="tintValue">0</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==================== 摄像头物理定义 ====================
+    const CAMERAS = {
+        front: { name: '前置 Sony LYT506', range: [0.8, 2], type: 'front', label: 'LYT506' },
+        ultraWide: { name: '后置超广角 Samsung JN1', range: [0.6, 1], type: 'back', label: 'JN1' },
+        wide: { name: '后置广角 Sony LYT808', range: [1, 3], type: 'back', label: 'LYT808' },
+        tele: { name: '后置长焦 OmniVision OV64B', range: [3, 140], type: 'back', label: 'OV64B' }
+    };
+
+    function getCameraForZoom(zoom, hybridMode, macroMode) {
+        if (macroMode) { let z = Math.min(25, Math.max(3, zoom)); return { camera: CAMERAS.tele, constrainedZoom: z }; }
+        if (hybridMode) { let z = Math.min(20, Math.max(1, zoom)); if (z < 3) return { camera: CAMERAS.wide, constrainedZoom: Math.min(3, Math.max(1, z)) }; else return { camera: CAMERAS.tele, constrainedZoom: Math.min(20, Math.max(3, z)) }; }
+        if (zoom >= CAMERAS.tele.range[0]) return { camera: CAMERAS.tele, constrainedZoom: Math.min(zoom, CAMERAS.tele.range[1]) };
+        else if (zoom >= CAMERAS.wide.range[0]) return { camera: CAMERAS.wide, constrainedZoom: zoom };
+        else if (zoom >= CAMERAS.ultraWide.range[0]) return { camera: CAMERAS.ultraWide, constrainedZoom: zoom };
+        else return { camera: CAMERAS.ultraWide, constrainedZoom: 0.6 };
+    }
+
+    // ==================== 全局变量 ====================
+    let video = document.getElementById('videoPreview');
+    let currentMode = 'photo';
+    let currentCameraId = null, allCameras = [], mediaStream = null, mediaRecorder = null, recordedChunks = [], isRecording = false;
+    let currentZoom = 1.0, tiltEnabled = false, currentVideoTrack = null, torchEnabled = false, hybridMode = false, macroMode = false;
+    let iso = 'auto', shutter = 'auto', ev = 0, focusMode = 'AF', focusDistance = 0.5, wbMode = 'auto', colorTemp = 5500, tint = 0;
+    let currentVideoRes = '1080p', currentFps = 30;
+    const resolutionMap = { '1080p': { width: 1920, height: 1080 }, '4K': { width: 3840, height: 2160 }, '8K': { width: 7680, height: 4320 } };
+
+    // ==================== AI 成像引擎 (增强降噪版) ====================
+    class AIImagingEngine {
+        constructor() {
+            this.sceneType = 'auto';
+            this.noiseLevel = 0;
+        }
+
+        analyzeScene(imageData) {
+            const data = imageData.data;
+            let sumR = 0, sumG = 0, sumB = 0, sumBright = 0;
+            const len = data.length / 4;
+            for (let i = 0; i < data.length; i += 4) {
+                sumR += data[i];
+                sumG += data[i+1];
+                sumB += data[i+2];
+                sumBright += 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+            }
+            const avgLum = sumBright / len;
+            if (avgLum < 70) this.sceneType = 'night';
+            else if (Math.abs((sumR/len) - (sumG/len)) < 12 && Math.abs((sumG/len) - (sumB/len)) < 12) this.sceneType = 'portrait';
+            else this.sceneType = 'landscape';
+            return this.sceneType;
+        }
+
+        estimateNoiseLevel(imageData) {
+            const w = imageData.width, h = imageData.height;
+            const data = imageData.data;
+            let sumVar = 0, count = 0;
+            for (let y = 1; y < h-1; y++) {
+                for (let x = 1; x < w-1; x++) {
+                    const idx = (y * w + x) * 4;
+                    let meanR = 0, meanG = 0, meanB = 0;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            const nidx = ((y+dy)*w + (x+dx)) * 4;
+                            meanR += data[nidx];
+                            meanG += data[nidx+1];
+                            meanB += data[nidx+2];
+                        }
+                    }
+                    meanR /= 9; meanG /= 9; meanB /= 9;
+                    let varR = 0, varG = 0, varB = 0;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            const nidx = ((y+dy)*w + (x+dx)) * 4;
+                            varR += (data[nidx] - meanR) ** 2;
+                            varG += (data[nidx+1] - meanG) ** 2;
+                            varB += (data[nidx+2] - meanB) ** 2;
+                        }
+                    }
+                    varR /= 9; varG /= 9; varB /= 9;
+                    sumVar += (varR + varG + varB) / 3;
+                    count++;
+                }
+            }
+            this.noiseLevel = sumVar / count;
+            return this.noiseLevel;
+        }
+
+        // 小波阈值降噪 (模拟，使用快速中值+双边复合)
+        waveletDenoise(imageData, strength = 1.0) {
+            this.adaptiveMedianFilter(imageData, Math.floor(2 * strength));
+            this.adaptiveBilateralDenoise(imageData, strength * 0.8);
+            return imageData;
+        }
+
+        adaptiveMedianFilter(imageData, maxRadius = 2) {
+            const w = imageData.width, h = imageData.height;
+            const data = imageData.data;
+            const output = new Uint8ClampedArray(data.length);
+            output.set(data);
+            const radius = Math.min(maxRadius, 2);
+            const kernelSize = (radius * 2 + 1) ** 2;
+            for (let y = radius; y < h - radius; y++) {
+                for (let x = radius; x < w - radius; x++) {
+                    const idx = (y * w + x) * 4;
+                    let rVals = [], gVals = [], bVals = [];
+                    for (let dy = -radius; dy <= radius; dy++) {
+                        for (let dx = -radius; dx <= radius; dx++) {
+                            const nidx = ((y+dy)*w + (x+dx)) * 4;
+                            rVals.push(data[nidx]);
+                            gVals.push(data[nidx+1]);
+                            bVals.push(data[nidx+2]);
+                        }
+                    }
+                    rVals.sort((a,b)=>a-b);
+                    gVals.sort((a,b)=>a-b);
+                    bVals.sort((a,b)=>a-b);
+                    const mid = Math.floor(kernelSize / 2);
+                    output[idx] = rVals[mid];
+                    output[idx+1] = gVals[mid];
+                    output[idx+2] = bVals[mid];
+                }
+            }
+            imageData.data.set(output);
+            return imageData;
+        }
+
+        adaptiveBilateralDenoise(imageData, strength = 1.0) {
+            const w = imageData.width, h = imageData.height;
+            const data = imageData.data;
+            const output = new Uint8ClampedArray(data.length);
+            const spatialSigma = Math.max(1, 1.5 * strength);
+            const rangeSigma = Math.max(15, 50 * strength);
+            const radius = Math.floor(spatialSigma * 1.2);
+            for (let y = radius; y < h - radius; y++) {
+                for (let x = radius; x < w - radius; x++) {
+                    const idx = (y * w + x) * 4;
+                    let sumR = 0, sumG = 0, sumB = 0, weightSum = 0;
+                    const centerR = data[idx], centerG = data[idx+1], centerB = data[idx+2];
+                    for (let dy = -radius; dy <= radius; dy++) {
+                        for (let dx = -radius; dx <= radius; dx++) {
+                            const nx = x + dx, ny = y + dy;
+                            const nidx = (ny * w + nx) * 4;
+                            const spatialDist = dx*dx + dy*dy;
+                            const spatialWeight = Math.exp(-spatialDist / (2 * spatialSigma * spatialSigma));
+                            const colorDist = (data[nidx] - centerR)**2 + (data[nidx+1] - centerG)**2 + (data[nidx+2] - centerB)**2;
+                            const rangeWeight = Math.exp(-colorDist / (2 * rangeSigma * rangeSigma));
+                            const weight = spatialWeight * rangeWeight;
+                            sumR += data[nidx] * weight;
+                            sumG += data[nidx+1] * weight;
+                            sumB += data[nidx+2] * weight;
+                            weightSum += weight;
+                        }
+                    }
+                    output[idx] = sumR / weightSum;
+                    output[idx+1] = sumG / weightSum;
+                    output[idx+2] = sumB / weightSum;
+                    output[idx+3] = data[idx+3];
+                }
+            }
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    const idx = (y * w + x) * 4;
+                    if (y < radius || y >= h-radius || x < radius || x >= w-radius) {
+                        output[idx] = data[idx];
+                        output[idx+1] = data[idx+1];
+                        output[idx+2] = data[idx+2];
+                        output[idx+3] = data[idx+3];
+                    }
+                }
+            }
+            imageData.data.set(output);
+            return imageData;
+        }
+
+        smartSharpen(imageData, strength = 0.6) {
+            const w = imageData.width, h = imageData.height;
+            const data = imageData.data;
+            const blurred = new Uint8ClampedArray(data.length);
+            for (let y = 1; y < h-1; y++) {
+                for (let x = 1; x < w-1; x++) {
+                    const idx = (y * w + x) * 4;
+                    let sumR = 0, sumG = 0, sumB = 0;
+                    for (let dy = -1; dy <= 1; dy++) {
+                        for (let dx = -1; dx <= 1; dx++) {
+                            const nidx = ((y+dy)*w + (x+dx)) * 4;
+                            sumR += data[nidx];
+                            sumG += data[nidx+1];
+                            sumB += data[nidx+2];
+                        }
+                    }
+                    blurred[idx] = sumR / 9;
+                    blurred[idx+1] = sumG / 9;
+                    blurred[idx+2] = sumB / 9;
+                }
+            }
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i], g = data[i+1], b = data[i+2];
+                const br = blurred[i], bg = blurred[i+1], bb = blurred[i+2];
+                data[i] = Math.min(255, Math.max(0, r + strength * (r - br)));
+                data[i+1] = Math.min(255, Math.max(0, g + strength * (g - bg)));
+                data[i+2] = Math.min(255, Math.max(0, b + strength * (b - bb)));
+            }
+            return imageData;
+        }
+
+        optimizeDynamicRange(imageData) {
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                let r = data[i], g = data[i+1], b = data[i+2];
+                let brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+                if (brightness > 185) {
+                    let factor = 1.0 - (brightness - 185) / 100;
+                    factor = Math.max(0.45, Math.min(1.0, factor));
+                    r *= factor; g *= factor; b *= factor;
+                }
+                if (brightness < 65) {
+                    let factor = 1.0 + (65 - brightness) / 90;
+                    factor = Math.min(1.5, factor);
+                    r *= factor; g *= factor; b *= factor;
+                }
+                data[i] = Math.min(255, r);
+                data[i+1] = Math.min(255, g);
+                data[i+2] = Math.min(255, b);
+            }
+            return imageData;
+        }
+
+        localToneMapping(imageData) {
+            const w = imageData.width, h = imageData.height;
+            const data = imageData.data;
+            const radius = 2;
+            for (let y = radius; y < h - radius; y++) {
+                for (let x = radius; x < w - radius; x++) {
+                    const idx = (y * w + x) * 4;
+                    let localAvg = 0;
+                    for (let dy = -radius; dy <= radius; dy++) {
+                        for (let dx = -radius; dx <= radius; dx++) {
+                            const nidx = ((y+dy)*w + (x+dx)) * 4;
+                            localAvg += 0.299 * data[nidx] + 0.587 * data[nidx+1] + 0.114 * data[nidx+2];
+                        }
+                    }
+                    localAvg /= ( (radius*2+1)**2 );
+                    const centerBright = 0.299 * data[idx] + 0.587 * data[idx+1] + 0.114 * data[idx+2];
+                    const contrastFactor = 1.0 + (centerBright - localAvg) / 128;
+                    data[idx] = Math.min(255, data[idx] * contrastFactor);
+                    data[idx+1] = Math.min(255, data[idx+1] * contrastFactor);
+                    data[idx+2] = Math.min(255, data[idx+2] * contrastFactor);
+                }
+            }
+            return imageData;
+        }
+
+        autoWhiteBalance(imageData) {
+            const data = imageData.data;
+            let sumR = 0, sumG = 0, sumB = 0;
+            const len = data.length / 4;
+            for (let i = 0; i < data.length; i += 4) {
+                sumR += data[i];
+                sumG += data[i+1];
+                sumB += data[i+2];
+            }
+            const avgR = sumR / len, avgG = sumG / len, avgB = sumB / len;
+            const avgGray = (avgR + avgG + avgB) / 3;
+            const gainR = avgGray / avgR, gainG = avgGray / avgG, gainB = avgGray / avgB;
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = Math.min(255, data[i] * gainR);
+                data[i+1] = Math.min(255, data[i+1] * gainG);
+                data[i+2] = Math.min(255, data[i+2] * gainB);
+            }
+            return imageData;
+        }
+
+        enhanceSaturation(imageData, factor = 1.1) {
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                let r = data[i], g = data[i+1], b = data[i+2];
+                let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                data[i] = Math.min(255, gray + factor * (r - gray));
+                data[i+1] = Math.min(255, gray + factor * (g - gray));
+                data[i+2] = Math.min(255, gray + factor * (b - gray));
+            }
+            return imageData;
+        }
+
+        enhance(imageData) {
+            this.analyzeScene(imageData);
+            this.estimateNoiseLevel(imageData);
+            let denoiseStrength = Math.min(1.2, this.noiseLevel / 300);
+            this.waveletDenoise(imageData, denoiseStrength);
+            this.adaptiveBilateralDenoise(imageData, denoiseStrength * 0.7);
+            this.optimizeDynamicRange(imageData);
+            this.localToneMapping(imageData);
+            this.smartSharpen(imageData, 0.6);
+            this.enhanceSaturation(imageData, 1.08);
+            if (wbMode === 'auto') {
+                this.autoWhiteBalance(imageData);
+            } else {
+                const kelvinFactor = colorTemp / 5500;
+                for (let i = 0; i < imageData.data.length; i += 4) {
+                    imageData.data[i] = Math.min(255, imageData.data[i] * kelvinFactor);
+                    imageData.data[i+2] = Math.min(255, imageData.data[i+2] / kelvinFactor);
+                    let r = imageData.data[i], g = imageData.data[i+1], b = imageData.data[i+2];
+                    let tintAdj = tint / 100;
+                    imageData.data[i] = Math.min(255, r + tintAdj * (r - g));
+                    imageData.data[i+2] = Math.min(255, b - tintAdj * (b - g));
+                }
+            }
+            return imageData;
+        }
+    }
+
+    const aiEngine = new AIImagingEngine();
+
+    // ==================== 移轴效果 ====================
+    function applyTiltShift(ctx, w, h) {
+        const imageData = ctx.getImageData(0, 0, w, h);
+        const data = imageData.data;
+        const centerY = h / 2;
+        const radius = h / 3;
+        for (let y = 0; y < h; y++) {
+            const dist = Math.abs(y - centerY);
+            let factor = Math.min(1, Math.pow(dist / radius, 1.5));
+            if (factor < 0.05) continue;
+            const blurRadius = Math.floor(factor * 8);
+            for (let x = 0; x < w; x++) {
+                const idx = (y * w + x) * 4;
+                let r = 0, g = 0, b = 0, count = 0;
+                for (let dy = -blurRadius; dy <= blurRadius; dy++) {
+                    for (let dx = -blurRadius; dx <= blurRadius; dx++) {
+                        const nx = x + dx, ny = y + dy;
+                        if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                            const nidx = (ny * w + nx) * 4;
+                            r += data[nidx];
+                            g += data[nidx+1];
+                            b += data[nidx+2];
+                            count++;
+                        }
+                    }
+                }
+                if (count) {
+                    data[idx] = r / count;
+                    data[idx+1] = g / count;
+                    data[idx+2] = b / count;
+                }
+            }
+        }
+        ctx.putImageData(imageData, 0, 0);
+    }
+
+    // ==================== 核心摄像头功能 ====================
+    async function enableContinuousAutoFocus() {
+        if (currentVideoTrack) try {
+            const caps = currentVideoTrack.getCapabilities();
+            if (caps && caps.focusMode && caps.focusMode.includes('continuous')) {
+                await currentVideoTrack.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+            }
+        } catch(e) {}
+    }
+
+    async function ensureAutoFocus() {
+        if (!currentVideoTrack) return;
+        try {
+            if (focusMode === 'MF') {
+                const caps = currentVideoTrack.getCapabilities();
+                if (caps && caps.focusMode && caps.focusMode.includes('auto')) {
+                    await currentVideoTrack.applyConstraints({ advanced: [{ focusMode: 'auto' }] });
+                }
+            } else {
+                await currentVideoTrack.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+            }
+        } catch(e) {}
+    }
+
+    async function startStream(deviceId, retry = 0) {
+        if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+        let targets = [
+            { width: { exact: 3840 }, height: { exact: 2160 } },
+            { width: { exact: 1920 }, height: { exact: 1080 } },
+            { width: { ideal: 1920 }, height: { ideal: 1080 } },
+            { width: { ideal: 1280 }, height: { ideal: 720 } }
+        ];
+        if (retry >= targets.length) retry = targets.length - 1;
+        let constraints = {
+            video: {
+                deviceId: { exact: deviceId },
+                width: targets[retry].width,
+                height: targets[retry].height,
+                frameRate: { ideal: currentFps },
+                resizeMode: 'none'
+            },
+            audio: false
+        };
+        if (currentMode === 'video' || currentMode === 'slowmo') {
+            const userRes = resolutionMap[currentVideoRes];
+            constraints.video.width = { ideal: userRes.width };
+            constraints.video.height = { ideal: userRes.height };
+        }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            mediaStream = stream;
+            video.srcObject = stream;
+            await video.play();
+            currentVideoTrack = stream.getVideoTracks()[0];
+            applyZoomToTrack();
+            applyPhotoSettings();
+            updateTorchButtonState();
+            await enableContinuousAutoFocus();
+        } catch(err) {
+            if (retry < targets.length - 1) {
+                await startStream(deviceId, retry + 1);
+            } else {
+                try {
+                    const fallback = await navigator.mediaDevices.getUserMedia({ video: true });
+                    mediaStream = fallback;
+                    video.srcObject = fallback;
+                    await video.play();
+                    currentVideoTrack = fallback.getVideoTracks()[0];
+                    applyZoomToTrack();
+                    updateTorchButtonState();
+                    await enableContinuousAutoFocus();
+                } catch(e) { alert("无法启动摄像头"); }
+            }
+        }
+    }
+
+    function applyZoomToTrack() {
+        if (!currentVideoTrack) return;
+        let z = currentZoom;
+        if (macroMode) z = Math.min(25, Math.max(3, z));
+        else if (hybridMode) z = Math.min(20, Math.max(1, z));
+        else {
+            const cam = getCameraForZoom(currentZoom, hybridMode, macroMode);
+            z = cam.constrainedZoom;
+        }
+        const caps = currentVideoTrack.getCapabilities();
+        if (caps && caps.zoom && caps.zoom.max > 1) {
+            currentVideoTrack.applyConstraints({ advanced: [{ zoom: Math.min(caps.zoom.max, Math.max(caps.zoom.min, z)) }] }).catch(() => {
+                video.style.transform = `scale(${z})`;
+            });
+        } else {
+            video.style.transform = `scale(${z})`;
+        }
+        document.querySelectorAll('.zoom-preset').forEach(el => {
+            let val = parseFloat(el.dataset.zoom);
+            if (Math.abs(val - currentZoom) < 0.05) el.classList.add('active-preset');
+            else el.classList.remove('active-preset');
+        });
+        document.getElementById('zoomFloatValue').innerText = currentZoom.toFixed(1) + 'x';
+        document.getElementById('zoomFloatSlider').value = currentZoom;
+    }
+
+    function setZoom(value) {
+        currentZoom = Math.min(140, Math.max(0.6, value));
+        if (hybridMode && currentZoom > 20) currentZoom = 20;
+        if (macroMode && currentZoom > 25) currentZoom = 25;
+        if (macroMode && currentZoom < 3) currentZoom = 3;
+        if (hybridMode && currentZoom < 1) currentZoom = 1;
+        applyZoomToTrack();
+    }
+
+    function applyPhotoSettings() {
+        if (!currentVideoTrack) return;
+        const caps = currentVideoTrack.getCapabilities();
+        const c = {};
+        if (iso !== 'auto' && caps.iso) c.iso = iso;
+        if (shutter !== 'auto' && caps.exposureTime) c.exposureTime = shutter;
+        if (ev !== 0 && caps.exposureCompensation) c.exposureCompensation = ev;
+        if (focusMode === 'MF' && caps.focusDistance) c.focusDistance = focusDistance;
+        if (wbMode === 'manual' && caps.colorTemperature) c.colorTemperature = colorTemp;
+        if (wbMode === 'manual' && caps.tint) c.tint = tint;
+        if (Object.keys(c).length) currentVideoTrack.applyConstraints({ advanced: [c] }).catch(() => {});
+    }
+
+    function updateTorchButtonState() {
+        const btn = document.getElementById('torchBtn');
+        if (!currentVideoTrack) { btn.disabled = true; btn.style.opacity = '0.5'; return; }
+        const caps = currentVideoTrack.getCapabilities();
+        if (caps && caps.torch) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            torchEnabled ? btn.classList.add('active') : btn.classList.remove('active');
+        } else { btn.disabled = true; btn.style.opacity = '0.5'; }
+    }
+
+    async function toggleTorch() {
+        if (!currentVideoTrack) return;
+        const caps = currentVideoTrack.getCapabilities();
+        if (!caps || !caps.torch) { alert("不支持手电筒"); return; }
+        torchEnabled = !torchEnabled;
+        try {
+            await currentVideoTrack.applyConstraints({ advanced: [{ torch: torchEnabled }] });
+            updateTorchButtonState();
+        } catch(e) { torchEnabled = !torchEnabled; alert("无法开启"); }
+    }
+
+    function toggleHybridMode() {
+        hybridMode = !hybridMode;
+        if (hybridMode) {
+            macroMode = false;
+            document.querySelector('.macro-small').classList.remove('active');
+            if (currentZoom < 1) setZoom(1);
+            if (currentZoom > 20) setZoom(20);
+        }
+        document.getElementById('hybridBtn').classList.toggle('active', hybridMode);
+        document.getElementById('hybridBadge').style.display = hybridMode ? 'block' : 'none';
+        restartStream();
+    }
+
+    function toggleMacroMode() {
+        macroMode = !macroMode;
+        if (macroMode) {
+            hybridMode = false;
+            document.getElementById('hybridBtn').classList.remove('active');
+            document.getElementById('hybridBadge').style.display = 'none';
+            if (currentZoom < 3) setZoom(3);
+            if (currentZoom > 25) setZoom(25);
+        }
+        document.querySelector('.macro-small').classList.toggle('active', macroMode);
+        restartStream();
+    }
+
+    async function restartStream() { await startStream(currentCameraId); }
+
+    // 拍照
+    async function takePhoto() {
+        if (!video.videoWidth) { alert("摄像头未就绪"); return; }
+        await ensureAutoFocus();
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        imageData = aiEngine.enhance(imageData);
+        if (hybridMode) {
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = Math.min(255, data[i] * 1.05);
+                data[i+1] = Math.min(255, data[i+1] * 1.05);
+                data[i+2] = Math.min(255, data[i+2] * 1.05);
+            }
+        }
+        if (currentMode === 'tilt') {
+            const finalCtx = canvas.getContext('2d');
+            finalCtx.putImageData(imageData, 0, 0);
+            applyTiltShift(finalCtx, canvas.width, canvas.height);
+            imageData = finalCtx.getImageData(0, 0, canvas.width, canvas.height);
+        }
+        let w = canvas.width, h = canvas.height;
+        const targetPixels = 12500000;
+        if (w * h > targetPixels) {
+            const ratio = Math.sqrt(targetPixels / (w * h));
+            w = Math.floor(w * ratio);
+            h = Math.floor(h * ratio);
+        }
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = w;
+        finalCanvas.height = h;
+        const finalCtx = finalCanvas.getContext('2d');
+        finalCtx.putImageData(imageData, 0, 0);
+        finalCanvas.toBlob(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `photo_${Date.now()}.jpg`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }, 'image/jpeg', 0.92);
+    }
+
+    // 视频录制
+    async function startRecording() {
+        if (isRecording || !mediaStream) return;
+        const mimeType = 'video/webm;codecs=vp8,opus';
+        if (!MediaRecorder.isTypeSupported(mimeType)) { alert("不支持录制"); return; }
+        mediaRecorder = new MediaRecorder(mediaStream, { mimeType });
+        recordedChunks = [];
+        mediaRecorder.ondataavailable = e => { if (e.data.size) recordedChunks.push(e.data); };
+        mediaRecorder.onstop = () => {
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `video_${Date.now()}.mp4`;
+            a.click();
+            URL.revokeObjectURL(url);
+            isRecording = false;
+            document.getElementById('recordBtn').classList.remove('recording');
+        };
+        mediaRecorder.start(1000);
+        isRecording = true;
+        document.getElementById('recordBtn').classList.add('recording');
+    }
+    function stopRecording() { if (mediaRecorder && isRecording) mediaRecorder.stop(); }
+
+    async function setMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-item').forEach(el => el.classList.remove('active'));
+        document.querySelector(`.mode-item[data-mode="${mode}"]`).classList.add('active');
+        const capture = document.getElementById('captureBtn'), record = document.getElementById('recordBtn');
+        capture.classList.remove('hidden'); record.classList.add('hidden');
+        if (mode === 'video') { capture.classList.add('hidden'); record.classList.remove('hidden'); }
+        else if (mode === 'slowmo') { capture.classList.add('hidden'); record.classList.remove('hidden'); }
+        const topLeft = document.getElementById('topLeftControls');
+        if (mode === 'video' || mode === 'slowmo') topLeft.classList.remove('hidden');
+        else topLeft.classList.add('hidden');
+        updateVideoOptions();
+        await startStream(currentCameraId);
+    }
+
+    async function initCamera() {
+        try {
+            const temp = await navigator.mediaDevices.getUserMedia({ video: true });
+            temp.getTracks().forEach(t => t.stop());
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            allCameras = devices.filter(d => d.kind === 'videoinput');
+            if (!allCameras.length) throw new Error();
+            currentCameraId = allCameras.find(c => c.label.toLowerCase().includes('back'))?.deviceId || allCameras[0].deviceId;
+            await startStream(currentCameraId);
+        } catch(e) { alert("请授予摄像头权限"); }
+    }
+
+    // 参数UI
+    function updateParamUI() {
+        document.getElementById('paramIsoValue').innerText = iso === 'auto' ? '自动' : iso;
+        let shutterDisplay = '自动';
+        if (shutter !== 'auto') {
+            if (shutter < 1) shutterDisplay = `1/${Math.round(1/shutter)}`;
+            else shutterDisplay = `${Math.round(shutter)}s`;
+        }
+        document.getElementById('paramShutterValue').innerText = shutterDisplay;
+        document.getElementById('paramEvValue').innerText = ev.toFixed(1);
+        if (focusMode === 'AF') document.getElementById('paramFocusValue').innerText = 'AF';
+        else document.getElementById('paramFocusValue').innerText = `MF ${focusDistance.toFixed(2)}`;
+        if (wbMode === 'auto') document.getElementById('paramWbValue').innerText = '自动';
+        else document.getElementById('paramWbValue').innerText = `${colorTemp}K / ${tint}`;
+        applyPhotoSettings();
+    }
+
+    function resetAllParams() {
+        iso = 'auto'; shutter = 'auto'; ev = 0; focusMode = 'AF'; focusDistance = 0.5; wbMode = 'auto'; colorTemp = 5500; tint = 0;
+        updateParamUI();
+    }
+
+    // 滑块系统 (改为点击弹出)
+    function openSlider(param, min, max, step, getCurrent, setValue, displayFunc) {
+        // 关闭其他浮层
+        document.getElementById('sliderOverlay').classList.remove('open');
+        document.getElementById('dualSliderOverlay').classList.remove('open');
+        const overlay = document.getElementById('sliderOverlay');
+        const slider = document.getElementById('sliderInput');
+        const label = document.getElementById('sliderLabel');
+        const valueSpan = document.getElementById('sliderValue');
+        label.innerText = param;
+        let current = getCurrent();
+        let norm = (current - min) / (max - min) * 100;
+        norm = Math.min(100, Math.max(0, norm));
+        slider.value = norm;
+        valueSpan.innerText = displayFunc(current);
+        slider.style.setProperty('--percent', norm + '%');
+        slider.oninput = (e) => {
+            let normVal = parseFloat(e.target.value);
+            let actual = min + (normVal/100) * (max - min);
+            if (step) actual = Math.round(actual / step) * step;
+            actual = Math.min(max, Math.max(min, actual));
+            valueSpan.innerText = displayFunc(actual);
+            setValue(actual);
+            e.target.style.setProperty('--percent', normVal + '%');
+        };
+        overlay.classList.add('open');
+    }
+
+    // 点击弹出滑块（移除长按逻辑）
+    function bindClickSlider(btnId, paramName, min, max, step, getCurrent, setValue, displayFunc) {
+        const btn = document.getElementById(btnId);
+        btn.onclick = () => openSlider(paramName, min, max, step, getCurrent, setValue, displayFunc);
+    }
+
+    function openDualSlider() {
+        document.getElementById('sliderOverlay').classList.remove('open');
+        document.getElementById('dualSliderOverlay').classList.remove('open');
+        const overlay = document.getElementById('dualSliderOverlay');
+        const tempSlider = document.getElementById('tempSlider');
+        const tintSlider = document.getElementById('tintSlider');
+        tempSlider.value = colorTemp;
+        tintSlider.value = tint;
+        document.getElementById('tempValue').innerText = colorTemp + 'K';
+        document.getElementById('tintValue').innerText = tint;
+        const updatePercent = (slider) => { let percent = (slider.value - slider.min) / (slider.max - slider.min) * 100; slider.style.setProperty('--percent', percent + '%'); };
+        updatePercent(tempSlider); updatePercent(tintSlider);
+        tempSlider.oninput = () => { let v = parseInt(tempSlider.value); document.getElementById('tempValue').innerText = v + 'K'; colorTemp = v; updatePercent(tempSlider); updateParamUI(); applyPhotoSettings(); };
+        tintSlider.oninput = () => { let v = parseInt(tintSlider.value); document.getElementById('tintValue').innerText = v; tint = v; updatePercent(tintSlider); updateParamUI(); applyPhotoSettings(); };
+        overlay.classList.add('open');
+    }
+
+    function initParamBar() {
+        // ISO：点击弹出滑块，移除原有步进切换
+        bindClickSlider('paramIsoValue', 'ISO', 50, 6400, 1, () => iso === 'auto' ? 800 : iso, (v) => { iso = v; updateParamUI(); }, (v) => v);
+        // 快门：点击弹出滑块
+        bindClickSlider('paramShutterValue', '快门速度', 0.0001, 30, 0.0001, () => shutter === 'auto' ? 0.01 : shutter, (v) => { shutter = v; updateParamUI(); }, (v) => v < 1 ? `1/${Math.round(1/v)}` : `${Math.round(v)}s`);
+        // EV：点击弹出滑块
+        bindClickSlider('paramEvValue', '曝光补偿', -3, 3, 0.1, () => ev, (v) => { ev = parseFloat(v.toFixed(1)); updateParamUI(); }, (v) => v.toFixed(1));
+        
+        // 对焦：点击切换AF/MF，若在MF模式下则弹出距离滑块；若在AF模式下则切换为MF并弹出滑块
+        const focusBtn = document.getElementById('paramFocusValue');
+        focusBtn.onclick = () => {
+            if (focusMode === 'AF') {
+                focusMode = 'MF';
+                updateParamUI();
+                // 自动弹出距离滑块
+                openSlider('对焦距离', 0, 1, 0.01, () => focusDistance, (v) => { focusDistance = v; updateParamUI(); }, (v) => v.toFixed(2));
+            } else {
+                // MF模式下直接弹出滑块
+                openSlider('对焦距离', 0, 1, 0.01, () => focusDistance, (v) => { focusDistance = v; updateParamUI(); }, (v) => v.toFixed(2));
+            }
+        };
+        
+        // 白平衡：点击打开双滑块（色温+色调）
+        document.getElementById('paramWbValue').onclick = () => { wbMode = 'manual'; openDualSlider(); };
+        document.getElementById('resetParamsBtn').onclick = resetAllParams;
+    }
+
+    // 视频/慢动作选项
+    function updateVideoOptions() {
+        const resSelect = document.getElementById('resolutionSelect');
+        const fpsSelect = document.getElementById('fpsSelect');
+        let resolutions = [];
+        let fpsOptions = [];
+        if (currentMode === 'slowmo') {
+            resolutions = ['1080p'];
+            fpsOptions = [240, 480, 960];
+        } else {
+            resolutions = ['1080p', '4K', '8K'];
+            if (currentVideoRes === '1080p') fpsOptions = [30, 60, 90, 120, 165];
+            else if (currentVideoRes === '4K') fpsOptions = [30, 60, 90, 120];
+            else if (currentVideoRes === '8K') fpsOptions = [30, 45];
+            else fpsOptions = [30];
+        }
+        resSelect.innerHTML = '';
+        resolutions.forEach(r => { const opt = document.createElement('option'); opt.value = r; opt.innerText = r; resSelect.appendChild(opt); });
+        if (!resolutions.includes(currentVideoRes)) currentVideoRes = resolutions[0];
+        resSelect.value = currentVideoRes;
+        fpsSelect.innerHTML = '';
+        fpsOptions.forEach(f => { const opt = document.createElement('option'); opt.value = f; opt.innerText = f + 'fps'; fpsSelect.appendChild(opt); });
+        if (!fpsOptions.includes(currentFps)) currentFps = fpsOptions[0];
+        fpsSelect.value = currentFps;
+        resSelect.onchange = () => { currentVideoRes = resSelect.value; updateVideoOptions(); currentFps = parseInt(fpsSelect.value); if (currentMode === 'video' || currentMode === 'slowmo') startStream(currentCameraId); };
+        fpsSelect.onchange = () => { currentFps = parseInt(fpsSelect.value); if (currentMode === 'video' || currentMode === 'slowmo') startStream(currentCameraId); };
+    }
+
+    // 变焦浮层
+    let longPressTimer = null;
+    const zoomContainer = document.getElementById('zoomContainer');
+    const zoomFloatPanel = document.getElementById('zoomFloatPanel');
+    const zoomFloatSlider = document.getElementById('zoomFloatSlider');
+    function openZoomPanel() {
+        closeAllFloatingPanels(false);
+        zoomFloatPanel.classList.add('open');
+        zoomFloatSlider.value = currentZoom;
+        document.getElementById('zoomFloatValue').innerText = currentZoom.toFixed(1) + 'x';
+    }
+    zoomContainer.addEventListener('touchstart', (e) => { longPressTimer = setTimeout(openZoomPanel, 500); });
+    zoomContainer.addEventListener('touchend', () => clearTimeout(longPressTimer));
+    zoomContainer.addEventListener('mousedown', (e) => { longPressTimer = setTimeout(openZoomPanel, 500); });
+    zoomContainer.addEventListener('mouseup', () => clearTimeout(longPressTimer));
+    zoomFloatSlider.addEventListener('input', (e) => setZoom(parseFloat(e.target.value)));
+
+    // 全局关闭浮层
+    function closeAllFloatingPanels(closeAll = true) {
+        if (closeAll) {
+            zoomFloatPanel.classList.remove('open');
+            document.getElementById('sliderOverlay').classList.remove('open');
+            document.getElementById('dualSliderOverlay').classList.remove('open');
+        } else {
+            document.getElementById('sliderOverlay').classList.remove('open');
+            document.getElementById('dualSliderOverlay').classList.remove('open');
+        }
+    }
+
+    // 点击外部关闭浮层
+    document.addEventListener('click', (e) => {
+        const isZoomPanel = zoomFloatPanel.contains(e.target);
+        const isSliderOverlay = document.getElementById('sliderOverlay').contains(e.target);
+        const isDualSlider = document.getElementById('dualSliderOverlay').contains(e.target);
+        if (isZoomPanel || isSliderOverlay || isDualSlider) return;
+        
+        // 如果点击的是功能控件，不关闭浮层
+        const isPreset = e.target.closest('.zoom-preset');
+        const isParamsTrigger = e.target.closest('#paramsTrigger');
+        const isMacro = e.target.closest('#macroTrigger');
+        const isHybrid = e.target.closest('#hybridBtn');
+        const isTorch = e.target.closest('#torchBtn');
+        const isSwitchCam = e.target.closest('#switchCamBtn');
+        const isModeItem = e.target.closest('.mode-item');
+        const isParamItem = e.target.closest('.param-item');
+        const isResetIcon = e.target.closest('.reset-icon');
+        const isCapture = e.target.closest('#captureBtn');
+        const isRecord = e.target.closest('#recordBtn');
+        
+        if (isPreset || isParamsTrigger || isMacro || isHybrid || isTorch || isSwitchCam || isModeItem || isParamItem || isResetIcon || isCapture || isRecord) {
+            return;
+        }
+        
+        closeAllFloatingPanels(true);
+    });
+
+    // 参数条显示
+    const paramBar = document.getElementById('paramBar');
+    const paramsTriggerBtn = document.getElementById('paramsTrigger');
+    paramsTriggerBtn.onclick = () => {
+        if (paramBar.classList.contains('closed')) {
+            paramBar.classList.remove('closed');
+            paramsTriggerBtn.style.backgroundColor = '#ff9f0a';
+            paramsTriggerBtn.style.color = 'black';
+        } else {
+            paramBar.classList.add('closed');
+            paramsTriggerBtn.style.backgroundColor = '';
+            paramsTriggerBtn.style.color = '';
+        }
+    };
+
+    // 预设倍率点击
+    document.querySelectorAll('.zoom-preset').forEach(btn => btn.addEventListener('click', (e) => { e.stopPropagation(); setZoom(parseFloat(btn.dataset.zoom)); }));
+
+    // 拍摄键变黄
+    const captureBtn = document.getElementById('captureBtn');
+    captureBtn.addEventListener('mousedown', () => captureBtn.classList.add('yellow'));
+    captureBtn.addEventListener('mouseup', () => captureBtn.classList.remove('yellow'));
+    captureBtn.addEventListener('touchstart', () => captureBtn.classList.add('yellow'));
+    captureBtn.addEventListener('touchend', () => captureBtn.classList.remove('yellow'));
+    captureBtn.onclick = takePhoto;
+
+    // 按钮事件
+    document.getElementById('recordBtn').onclick = () => { if(isRecording) stopRecording(); else startRecording(); };
+    document.getElementById('switchCamBtn').onclick = async () => {
+        let idx = allCameras.findIndex(c => c.deviceId === currentCameraId);
+        let next = (idx+1)%allCameras.length;
+        currentCameraId = allCameras[next].deviceId;
+        const btn = document.getElementById('switchCamBtn');
+        btn.classList.add('flash');
+        setTimeout(() => btn.classList.remove('flash'), 150);
+        await startStream(currentCameraId);
+    };
+    document.getElementById('torchBtn').onclick = toggleTorch;
+    document.getElementById('hybridBtn').onclick = toggleHybridMode;
+    document.getElementById('macroTrigger').onclick = toggleMacroMode;
+    document.querySelectorAll('.mode-item').forEach(el => el.onclick = () => setMode(el.dataset.mode));
+
+    // 启动
+    setMode('photo');
+    initCamera();
+    initParamBar();
+    updateParamUI();
+    updateVideoOptions();
+</script>
+</body>
 </html>
